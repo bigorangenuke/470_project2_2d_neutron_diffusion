@@ -4,6 +4,7 @@ MINIMUM_REACTOR_DIMENSION = 4
 
 dbg = False
 dbg_itr = False
+
 class Material():
 	def __init__(self,material):
 		lines = material.split(',')
@@ -36,17 +37,18 @@ class Node():
 	def __init__(self,i,j,materials=None):
 		self.i = i
 		self.j = j
+		self.set_materials(materials)
+
+	def __repr__(self):
+		return "(%s,%s)"%(self.i,self.j)
+	
+	def set_materials(self,materials):
 		self.materials = materials
-		#print (materials)
 		self.sigma_tr = self.get_sigma_tr()
 		self.sigma_a = self.get_sigma_a()
 		self.nuSigma_f = self.get_nuSigma_f()
 		
-		self.source = 1.
-		self.phi = 1.
-	def __repr__(self):
-		return "(%s,%s)"%(self.i,self.j)
-	
+		
 	def get_sigma_tr(self):
 		#Get array of the Sigma_tr of all the materials
 		return np.array(list(material.Sigma_tr for material in self.materials),dtype="float")
@@ -100,7 +102,8 @@ class Reactor():
 		###############################
 	
 		self.set_reactorSize(size=[self.w,self.h])
-		
+		self.has_reflector = False
+		self.has_absorber = False
 		#Nodes in the reactor
 		if "nodes" in kwargs:
 			nds = kwargs["nodes"]
@@ -111,15 +114,52 @@ class Reactor():
 		#Physical Dimensions of reactor
 		if "size" in kwargs:
 			self.set_reactorSize(kwargs["size"])
-
+		
+		if 'reflector' in kwargs:
+			self.has_reflector = kwargs['reflector']
+			
+		if 'absorber' in kwargs:
+			self.has_absorber = kwargs['absorber']
 		self.materials = self.load_materials()
-
+		
 
 		thenodes = self.slice()
-
+		print(self.materials)
 		for j in range(int(self.m)):
 			for i in range(int(self.n)):
 				thenodes[i,j] = Node(i,j,self.materials)
+		
+		if self.has_reflector:
+			r_h = [h for h in self.materials if h.name == 'h']
+			
+			r_x = 10
+			nds = thenodes[:,:r_x]
+			for (i,j),nd in np.ndenumerate(nds):
+				#print(nd)
+				nd.set_materials(r_h) 
+			print (nds.shape)
+			nds = thenodes[:,-r_x:]
+			for (i,j),nd in np.ndenumerate(nds):
+				nd.set_materials(r_h)
+			print (nds.shape)
+			nds = thenodes[:r_x,:]
+			for (i,j),nd in np.ndenumerate(nds):
+				nd.set_materials(r_h)
+			print (nds.shape)
+			nds = thenodes[-r_x:,:]
+			for (i,j),nd in np.ndenumerate(nds):
+				nd.set_materials(r_h)
+			print (nds.shape)
+			
+		if self.has_absorber:
+			
+			r_b = [b for b in self.materials if b.name=='b10']
+			
+			nds = thenodes[22:28,22:28]
+			for (i,j),nd in np.ndenumerate(nds):
+				nd.set_materials(r_b)
+			
+					
 		self.nodes = thenodes
 		
 	def set_reactorSize(self,size):
@@ -129,21 +169,21 @@ class Reactor():
 		self.h = size[1]
 		self.dy = self.h/(self.n-1)
 		
+		
 	def slice(self,centralNode=None):
 		if dbg: print("===Start rx.slice(%s)==="%(centralNode))
 		
 		#Initial instantiation of self.nodes
 		if centralNode==None: return np.zeros((self.n,self.m),dtype=object)
 		newSlice = np.zeros_like(self.nodes)
-		
-		
-		
+	
 		for i in range(centralNode.i):
 			for j in range(centralNode.j):
 				print("Slice ij",i,j)
 				newSlice[i,j]=self.nodes[i,j]
 	    #print(newSlice)
 		return newSlice
+		
 		
 	def load_materials(self):
 		#Pull out of text file and load line by line to materials

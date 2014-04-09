@@ -1,17 +1,18 @@
 import rx
 import numpy as np
 import matplotlib.pyplot as plt
-
+import time
 dbg = False
 ddbg = False
 
 K_TOLERANCE = 1e-4
 
-M_NODES = 50.
-N_NODES = 50.
+m = 60.
+M_NODES = m
+N_NODES = m
 
-REACTOR_WIDTH	= 300.
-REACTOR_HEIGHT	= 300.
+REACTOR_WIDTH	= 230.
+REACTOR_HEIGHT	= 230.
 
 
 class ReactorSolver():
@@ -57,6 +58,7 @@ class ReactorSolver():
 		dy = self.rx.dy
 		
 		tmp =np.zeros_like(slice_like)
+		#tmp = np.zeros((M_NODES -2) *(N_NODES -2))
 		tmp[i,j] = 2*self.rx.nodes[i,j].D()*((dx/dy)+(dy/dx))+(self.rx.nodes[i,j].Sigma_a()*dx*dy)
 		
 		if i:
@@ -83,7 +85,9 @@ class ReactorSolver():
 		while not done:
 			itr+=1
 			#print('==Iteration %s=='%(itr))
-			#print('i=%s k=%s'%(itr,self.k))
+			#===================================================================
+			# print('i=%s k=%s'%(itr,self.k))
+			#===================================================================
 			b = np.matrix(self.B())
 			ai = np.linalg.inv(np.matrix(self.A()))
 			p = self.phi
@@ -114,7 +118,8 @@ def minimum_critical_geometry():
 		rxsz +=1
 		reactor = rx.Reactor(nodes = [M_NODES,N_NODES],size = [rxsz,rxsz])
 		rxsolver = ReactorSolver(reactor)
-		k = rxsolver.solve()
+		k,phi = rxsolver.solve()
+		print(k)
 		x.append(rxsz)
 		f.append(k)
 		if k>1:
@@ -158,29 +163,75 @@ def solve():
 	rxsolver = ReactorSolver(reactor)
 	return rxsolver.solve()
 	
+def timing(start,stop,step):
+	ti=[]
+	t = []
+	for i in range (start,stop,step):
+		print(i)
+		M_NODES = float(i)
+		N_NODES = float(i)
+		
+		starttime = time.clock()
+		solve()
+		t.append(time.clock()-starttime)
+		ti.append(i)
+		print(t[-1])
+	
+	return ti,t
 	
 if __name__ == "__main__":
+	#===========================================================================
+	# i,t  = timing(5,60,5)
+	# plt.xlabel('Matrix dimension')
+	# plt.ylabel('Time for convergence (s)')
+	# plt.plot(i,t)
+	# plt.show()
+	#===========================================================================
 	
-	#x,f=minimum_critical_geometry()
-	k,phi = solve()
-	print(phi.shape)
-	p = phi.reshape((M_NODES-2,N_NODES-2))
 	
-	#tabulate position using node number for plotting
-	x = np.zeros(M_NODES-2)
-	x *= REACTOR_WIDTH/M_NODES
-	y = np.zeros(N_NODES-2)
-	y *= REACTOR_HEIGHT/N_NODES
+	
+	starttime = time.clock()
+	solve()
+	print(M_NODES,time.clock()-starttime)
 
-	#normalize
-	p /=np.max(p)
 	
-	ax = plt.imshow(p,cmap = 'BuPu',extent=[1,REACTOR_WIDTH,1,REACTOR_HEIGHT])
-	plt.xlabel('x position (cm)')
-	plt.ylabel('y position (cm)')
-	cb = plt.colorbar()
-	plt.title('Flux vs. position in the core')
-	plt.show()
+	
+	
+	
+	#===========================================================================
+	# newt = np.asarray(t)/np.min(t)
+	# plt.plot(i,newt)
+	# plt.show()
+	#===========================================================================
+	#===========================================================================
+	# x,f = minimum_critical_geometry()
+	# solve()
+	#===========================================================================
+	#x,f=minimum_critical_geometry()
+#===============================================================================
+# 	k,phi = solve()
+# 	print(phi.shape)
+# 	p = phi.reshape((M_NODES-2,N_NODES-2))
+# 	
+# 	#tabulate position using node number for plotting
+# 	x = np.zeros(M_NODES-2)
+# 	x *= REACTOR_WIDTH/M_NODES
+# 	y = np.zeros(N_NODES-2)
+# 	y *= REACTOR_HEIGHT/N_NODES
+# 
+# 	#normalize
+# 	p /=np.max(p)
+# 	
+# 	ax = plt.imshow(p,extent=[1,REACTOR_WIDTH,1,REACTOR_HEIGHT])
+# 	plt.xlabel('x position (cm)')
+# 	plt.ylabel('y position (cm)')
+# 	cb = plt.colorbar()
+# 	plt.title('Flux vs. position in the core')
+# 	plt.show()
+#===============================================================================
+
+
+
 	
 # 	plt.plot(x,y,p)
 # 	plt.xlabel('x position')
